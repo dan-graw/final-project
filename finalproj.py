@@ -10,6 +10,9 @@ DBNAME = 'nflquarterbacks.db'
 QBCACHE = 'qbcache.json'
 TEAMCACHE = 'teamcache.json'
 
+name_id = {}
+counter = 1
+
 def init_db():
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
@@ -105,6 +108,9 @@ def cache_QB_data(baseurl):
         return QB_CACHE_DICT[unique_ident]
 
 
+    
+
+
 def get_QB_data(name):
     page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
     page_soup = BeautifulSoup(page_html, 'html.parser')
@@ -152,12 +158,13 @@ def get_QB_data(name):
     else:
         return 'not a QB name'
 
+
 def populate_PlayerInfo(list_of_tuples):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
 
-    name_id = {}
-    counter = 1
+    global name_id
+    global counter
     for player in list_of_tuples:
         player_name = player[0]
         if player_name not in name_id.keys():
@@ -218,6 +225,8 @@ def get_season_data(name): #this should be the return value of  get_QB_data
 def populate_SeasonalStats(list_of_tuples):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
+    global name_id
+    global counter
     for season in list_of_tuples:
         player_name = season[0]#
         year = season[1]
@@ -228,8 +237,15 @@ def populate_SeasonalStats(list_of_tuples):
         pass_yards = season[6]
         passing_tds = season[7]
         interceptions = season[8]
+
+
+        if player_name not in name_id.keys():
+            name_id[player_name] = counter
+            counter += 1
+        playeridnum = name_id[player_name]
+
         qbr = season[9]
-        insertion = (None, player_name, None, team, year, player_age, record, comp_percent, pass_yards, passing_tds, interceptions, qbr)
+        insertion = (None, player_name, playeridnum, team, year, player_age, record, comp_percent, pass_yards, passing_tds, interceptions, qbr)
         statement = '''
             INSERT INTO 'SeasonalStats'
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -361,8 +377,10 @@ def interactive_prompt():
                 response = input('Enter a command: ')
 
 
+
             populate_PlayerInfo(playerinfo_response_list)
             populate_SeasonalStats(seasonalstats_response_list)
+            print(name_id)
 
 
 
