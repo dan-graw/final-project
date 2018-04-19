@@ -28,7 +28,7 @@ def init_db():
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
             'Name' TEXT,
             'NameID' INTEGER,
-            'YearBorn' TEXT,
+            'YearBorn' INTEGER,
             'College' TEXT,
             'Team' TEXT
         );
@@ -48,14 +48,15 @@ def init_db():
             'Name' TEXT,
             'NameId' INTEGER,
             'Team' TEXT,
-            'Year' TEXT,
-            'Age' TEXT,
-            'SeasonRecord' TEXT,
-            'Completions' TEXT,
-            'PassYards' TEXT,
-            'Touchdowns' TEXT,
-            'Interceptions' TEXT,
-            'Rating' TEXT
+            'Year' INTEGER,
+            'Age' INTEGER,
+            'Wins' INTEGER,
+            'Losses' INTEGER,
+            'CompletionPercent' REAL,
+            'PassYards' INTEGER,
+            'Touchdowns' INTEGER,
+            'Interceptions' INTEGER,
+            'Rating' REAL
         );
     '''
     cur.execute(statement)
@@ -108,7 +109,7 @@ def cache_QB_data(baseurl):
         return QB_CACHE_DICT[unique_ident]
 
 
-    
+
 
 
 def get_QB_data(name):
@@ -153,7 +154,7 @@ def get_QB_data(name):
                 if td.string not in player_teams:
                     player_teams.append(td.string)
         for team in player_teams:
-            return_list.append((player_name, year_born, college, team))
+            return_list.append((player_name, int(year_born), college, team))
         return return_list
     else:
         return 'not a QB name'
@@ -209,12 +210,39 @@ def get_season_data(name): #this should be the return value of  get_QB_data
             age = row.find(attrs={'data-stat': 'age'}).string
             team = row.find(attrs={'data-stat': 'team'}).string
             record = row.find(attrs={'data-stat': 'qb_rec'}).string
+            try:
+                record_parts = record.split('-')
+                wins = int(record_parts[0])
+                losses = int(record_parts[1])
+            except:
+                wins = 'n/a'
+                losses = 'n/a'
             comp_percent = row.find(attrs={'data-stat': 'pass_cmp_perc'}).string
+            try:
+                comp_percent = float(comp_percent)
+            except:
+                comp_percent = 'n/a'
             pass_yards = row.find(attrs={'data-stat': 'pass_yds'}).string
+            try:
+                pass_yards = int(pass_yards)
+            except:
+                pass_yards = 'n/a'
             passing_tds = row.find(attrs={'data-stat': 'pass_td'}).string
+            try:
+                passing_tds = int(passing_tds)
+            except:
+                passing_tds = 'n/a'
             interceptions = row.find(attrs={'data-stat': 'pass_int'}).string
+            try:
+                interceptions = int(interceptions)
+            except:
+                interceptions = 'n/a'
             qbr = row.find(attrs={'data-stat': 'qbr'}).string
-            info = (name, year, age, team, record, comp_percent, pass_yards, passing_tds, interceptions, qbr)
+            try:
+                qbr = float(qbr)
+            except:
+                qbr = 'n/a'
+            info = (name, int(year), int(age), team, wins, losses, comp_percent, pass_yards, passing_tds, interceptions, qbr)
             info_list.append(info)
         return info_list
     else:
@@ -232,11 +260,12 @@ def populate_SeasonalStats(list_of_tuples):
         year = season[1]
         player_age = season[2]
         team = season[3]#
-        record = season[4]
-        comp_percent = season[5]
-        pass_yards = season[6]
-        passing_tds = season[7]
-        interceptions = season[8]
+        wins = season[4]
+        losses = season[5]
+        comp_percent = season[6]
+        pass_yards = season[7]
+        passing_tds = season[8]
+        interceptions = season[9]
 
 
         if player_name not in name_id.keys():
@@ -244,11 +273,11 @@ def populate_SeasonalStats(list_of_tuples):
             counter += 1
         playeridnum = name_id[player_name]
 
-        qbr = season[9]
-        insertion = (None, player_name, playeridnum, team, year, player_age, record, comp_percent, pass_yards, passing_tds, interceptions, qbr)
+        qbr = season[10]
+        insertion = (None, player_name, playeridnum, team, year, player_age, wins, losses, comp_percent, pass_yards, passing_tds, interceptions, qbr)
         statement = '''
             INSERT INTO 'SeasonalStats'
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         cur.execute(statement, insertion)
         conn.commit()
@@ -318,6 +347,114 @@ def populate_Teams(list_of_tuples):
 
 
 
+def get_all_QB_names():
+    page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
+    page_soup = BeautifulSoup(page_html, 'html.parser')
+    data = page_soup.find(id='div_players')
+    moredata = data.find('tbody')
+    qb_data = moredata.find_all('tr')
+    all_QB_names = []
+    for qb in qb_data:
+        qb_name = qb.find('a').string
+        all_QB_names.append(qb_name)
+    return all_QB_names
+
+
+def process_command(command):
+    query = command.split(' ')
+    main_commands = ['list', 'compare']
+    control_dict = {'main': '', 'qb1': '', 'qb2': '', 'season': '', 'stat': ''}
+    stat_options = ['team', 'age', 'record', 'completions', 'passyards', 'touchdowns', 'interceptions', 'rating', 'stats']
+    all_QB_names = get_all_QB_names()
+    if query[0] not in main_commands:
+        return 'Invalid command'
+    elif query[0] == 'list':
+        control_dict['main'] = query[0]
+        firstname = query[1]
+        lastname = query[2]
+        player_name = firstname + ' ' + lastname
+        if player_name in all_QB_names:
+            control_dict['qb1'] = player_name
+        else:
+            return 'Invalid command'
+        try:
+            if query[3] in stat_options:
+                control_dict['stat'] = query[3]
+            else:
+                return 'Invalid command'
+        except:
+            return 'Invalid command'
+    elif query[0] == 'compare':
+        control_dict['main'] = query[0]
+        firstname1 = query[1]
+        lastname1 = query[2]
+        firstname2 = query[4]
+        lastname2 = query[5]
+        qb1name = firstname1 + ' ' + lastname1
+        qb2name = firstname2 + ' ' + lastname2
+        if qb1name and qb2name in all_QB_names:
+            control_dict['qb1'] = qb1name
+            control_dict['qb2'] = qb2name
+        else:
+            return 'Invalid command'
+        if query[6] in stat_options:
+            control_dict['stat'] = query[6]
+        else:
+            return 'Invalid command'
+    else:
+        return 'Invalid command'
+    return control_dict
+
+
+
+
+
+
+
+def list_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': '', 'season': 'all', 'stat': 'interceptions'}
+    conn = sqlite3.connect(DBNAME)
+    cur = conn.cursor()
+    player_name = control_dict['qb1']
+    stat_spec = control_dict['stat']
+    statement = '''
+        SELECT Name, Year, {}
+        FROM SeasonalStats
+        WHERE Name='{}'
+        ORDER BY Year ASC
+    '''.format(stat_spec, player_name)
+    cur.execute(statement)
+    info_list = []
+    for row in cur:
+        info_list.append(row)
+    return info_list
+
+def find_all_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': '', 'season': 'all', 'stat': 'interceptions'}
+    conn = sqlite3.connect(DBNAME)
+    cur = conn.cursor()
+    player_name = control_dict['qb1']
+    stat_spec = control_dict['stat']
+    season_spec = control_dict['season']
+    statement = '''
+        SELECT Name, Year, {}
+        FROM SeasonalStats
+        WHERE Name='{}'
+        ORDER BY Year ASC
+    '''.format(stat_spec, player_name)
+    cur.execute(statement)
+    info_list = []
+    for row in cur:
+        info_list.append(row)
+    return info_list
+
+
+
+#inputtt = input('jhbd: ')
+#while inputtt != 'exit':
+#    print(process_command(inputtt))
+#    list_info(process_command(inputtt))
+#    inputtt = input('jhbd: ')
+
+
 
 
 
@@ -363,41 +500,44 @@ def interactive_prompt():
     response = ''
     playerinfo_response_list = []
     seasonalstats_response_list = []
+    player_names = []
+    init_db()
+    populate_Teams(get_team_data())
+    all_QB_names = get_all_QB_names()
+    response = input('Enter a command: ')
+    if response == 'exit':
+        print('Goodbye')
     while response != 'exit':
-        response = input('Enter a command: ')
-        if response == 'exit':
-            print('Goodbye')
-            break
-        else:
-            init_db()
-            populate_Teams(get_team_data())
-            while response != 'done':
-                playerinfo_response_list += get_QB_data(response)
-                seasonalstats_response_list += get_season_data(response)
+        control_dict = process_command(response)
+        if control_dict != 'Invalid command':
+            player_name = control_dict['qb1']
+            main_command = control_dict['main']
+            if player_name in all_QB_names:
+                if player_name not in player_names:
+                    player_names.append(player_name)
+                    playerinfo_response_list += get_QB_data(player_name)
+                    seasonalstats_response_list += get_season_data(player_name)
+                    populate_PlayerInfo(playerinfo_response_list)
+                    populate_SeasonalStats(seasonalstats_response_list)
+                else:
+                    pass
+            else:
+                print("That's not a QB name")
                 response = input('Enter a command: ')
+                continue
+            if main_command == 'list':
+                for row in list_info(control_dict):
+                    rowlist = []
+                    for word in row:
+                        formatted = format(word, '>8')
+                        rowlist.append(formatted)
+                    for item in rowlist:
+                        print(item)
 
 
+                print(list_info(control_dict))
 
-            populate_PlayerInfo(playerinfo_response_list)
-            populate_SeasonalStats(seasonalstats_response_list)
-            print(name_id)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        response = input('Enter a command: ')
 
 
 
