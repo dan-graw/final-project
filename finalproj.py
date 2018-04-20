@@ -4,6 +4,8 @@ import sqlite3
 import csv
 from bs4 import BeautifulSoup
 import datetime
+import plotly.plotly as py
+import plotly.graph_objs as go
 
 API_KEY = 'q5zcej3vdue2yamtbu73zf4n'
 DBNAME = 'nflquarterbacks.db'
@@ -13,16 +15,15 @@ TEAMCACHE = 'teamcache.json'
 name_id = {}
 counter = 1
 
+
 def init_db():
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
-
     statement = '''
         DROP TABLE IF EXISTS 'PlayerInfo';
     '''
     cur.execute(statement)
     conn.commit()
-
     statement = '''
         CREATE TABLE 'PlayerInfo' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,13 +36,11 @@ def init_db():
     '''
     cur.execute(statement)
     conn.commit()
-
     statement = '''
         DROP TABLE IF EXISTS 'SeasonalStats';
     '''
     cur.execute(statement)
     conn.commit()
-
     statement = '''
         CREATE TABLE 'SeasonalStats' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,13 +60,11 @@ def init_db():
     '''
     cur.execute(statement)
     conn.commit()
-
     statement = '''
         DROP TABLE IF EXISTS 'Teams';
     '''
     cur.execute(statement)
     conn.commit()
-
     statement = '''
         CREATE TABLE 'Teams' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,13 +77,8 @@ def init_db():
     '''
     cur.execute(statement)
     conn.commit()
-
     conn.close()
 
-
-
-
-#Get QB Data and make a cache for data from https://www.pro-football-reference.com/players/qbindex.htm
 
 try:
     cache_file = open(QBCACHE, 'r')
@@ -109,9 +101,6 @@ def cache_QB_data(baseurl):
         return QB_CACHE_DICT[unique_ident]
 
 
-
-
-
 def get_QB_data(name):
     page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
     page_soup = BeautifulSoup(page_html, 'html.parser')
@@ -126,27 +115,21 @@ def get_QB_data(name):
     if name in qb_dict.keys():
         qb_html = cache_QB_data('https://www.pro-football-reference.com/{}'.format(qb_dict[name]))
         qb_soup = BeautifulSoup(qb_html, 'html.parser')
-        #print('working')
-        #Get player info first
         player_info = qb_soup.find(itemtype='https://schema.org/Person')
         #Get name
-        player_name = player_info.find(itemprop='name').string #################
-        #Get year born
-        ptags = player_info.find_all('p') #################
+        player_name = player_info.find(itemprop='name').string
+        ptags = player_info.find_all('p')
         for p in ptags:
             if 'Born' in p.text:
                 year_born = p.find('span')['data-birth'][0:4]
-        #Get teams
-        #Get College
         ptags = player_info.find_all('p')
         for p in ptags:
             if 'College' in p.text:
-                college = p.find('a').text #################
-        #Get teams played on
+                college = p.find('a').text
         passing_info = qb_soup.find(id='passing')
         passing_table = passing_info.find('tbody')
         table_elements = passing_table.find_all('tr')
-        player_teams = [] ######################
+        player_teams = []
         return_list = []
         for tr in table_elements:
             td_list = tr.find_all('td', attrs={'data-stat': 'team'})
@@ -163,7 +146,6 @@ def get_QB_data(name):
 def populate_PlayerInfo(list_of_tuples):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
-
     global name_id
     global counter
     for player in list_of_tuples:
@@ -174,7 +156,6 @@ def populate_PlayerInfo(list_of_tuples):
         year_born = player[1]
         college = player[2]
         team = player[3]
-
         insertion = (None, player_name, name_id[player_name], year_born, college, team)
         statement = '''
             INSERT INTO 'PlayerInfo'
@@ -183,8 +164,6 @@ def populate_PlayerInfo(list_of_tuples):
         cur.execute(statement, insertion)
         conn.commit()
     conn.close()
-
-#print(get_QB_data('Tom Brady'))
 
 
 def get_season_data(name): #this should be the return value of  get_QB_data
@@ -248,7 +227,6 @@ def get_season_data(name): #this should be the return value of  get_QB_data
     else:
         return 'not a name'
 
-#print(get_season_data('Peyton Manning'))
 
 def populate_SeasonalStats(list_of_tuples):
     conn = sqlite3.connect(DBNAME)
@@ -266,13 +244,10 @@ def populate_SeasonalStats(list_of_tuples):
         pass_yards = season[7]
         passing_tds = season[8]
         interceptions = season[9]
-
-
         if player_name not in name_id.keys():
             name_id[player_name] = counter
             counter += 1
         playeridnum = name_id[player_name]
-
         qbr = season[10]
         insertion = (None, player_name, playeridnum, team, year, player_age, wins, losses, comp_percent, pass_yards, passing_tds, interceptions, qbr)
         statement = '''
@@ -304,6 +279,7 @@ def cache_team_data(baseurl):
         fw.close()
         return TEAM_CACHE_DICT[unique_ident]
 
+
 def get_team_data():
     all_team_data = cache_team_data('https://api.sportradar.us/nfl-ot2/league/hierarchy.json?api_key={}'.format(API_KEY))
     team_info_list = []
@@ -327,6 +303,7 @@ def get_team_data():
             team_info_list.append(team_tup)
     return team_info_list
 
+
 def populate_Teams(list_of_tuples):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
@@ -344,7 +321,6 @@ def populate_Teams(list_of_tuples):
         cur.execute(statement, insertion)
         conn.commit()
     conn.close()
-
 
 
 def get_all_QB_names():
@@ -368,10 +344,14 @@ def process_command(command):
     all_QB_names = get_all_QB_names()
     if query[0] not in main_commands:
         return 'Invalid command'
+        print('gggggg')
     elif query[0] == 'list':
         control_dict['main'] = query[0]
-        firstname = query[1]
-        lastname = query[2]
+        try:
+            firstname = query[1]
+            lastname = query[2]
+        except:
+            return 'Invalid command'
         player_name = firstname + ' ' + lastname
         if player_name in all_QB_names:
             control_dict['qb1'] = player_name
@@ -406,40 +386,25 @@ def process_command(command):
     return control_dict
 
 
-
-
-
-
-
 def list_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': '', 'season': 'all', 'stat': 'interceptions'}
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
     player_name = control_dict['qb1']
     stat_spec = control_dict['stat']
-    statement = '''
-        SELECT Name, Year, {}
-        FROM SeasonalStats
-        WHERE Name='{}'
-        ORDER BY Year ASC
-    '''.format(stat_spec, player_name)
-    cur.execute(statement)
-    info_list = []
-    for row in cur:
-        info_list.append(row)
-    return info_list
-
-def find_all_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': '', 'season': 'all', 'stat': 'interceptions'}
-    conn = sqlite3.connect(DBNAME)
-    cur = conn.cursor()
-    player_name = control_dict['qb1']
-    stat_spec = control_dict['stat']
-    season_spec = control_dict['season']
-    statement = '''
-        SELECT Name, Year, {}
-        FROM SeasonalStats
-        WHERE Name='{}'
-        ORDER BY Year ASC
-    '''.format(stat_spec, player_name)
+    if stat_spec == 'stats':
+        statement = '''
+            SELECT Name, Team, Year, Age, Wins, Losses, CompletionPercent, PassYards, Touchdowns, Interceptions, Rating
+            FROM SeasonalStats
+            WHERE Name='{}'
+            ORDER BY Year ASC
+        '''.format(player_name)
+    else:
+        statement = '''
+            SELECT Name, Year, {}
+            FROM SeasonalStats
+            WHERE Name='{}'
+            ORDER BY Year ASC
+        '''.format(stat_spec, player_name)
     cur.execute(statement)
     info_list = []
     for row in cur:
@@ -447,53 +412,21 @@ def find_all_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': ''
     return info_list
 
 
-
-#inputtt = input('jhbd: ')
-#while inputtt != 'exit':
-#    print(process_command(inputtt))
-#    list_info(process_command(inputtt))
-#    inputtt = input('jhbd: ')
-
-
-
-
-
-
-
-
-
-
-
-#https://api.sportradar.us/nfl-{access_level}{version}/league/hierarchy.{format}?api_key={your_api_key}
-
-#https://api.sportradar.us/nfl-ot2/league/hierarchy.json?api_key=q5zcej3vdue2yamtbu73zf4n
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Get NFL Team data and make a cache from https://developer.sportradar.com/files/indexFootball.html?python#football
-
-
-
-
-
-
-
-
-
-
-
-
-#Make a function that creates and adds data FROM THE CACHE to the database
+def get_plotly_for_one(list_of_tuples):
+    years = []
+    stats = []
+    for tup in list_of_tuples:
+        year = tup[1]
+        stat = tup[2]
+        years.append(year)
+        stats.append(stat)
+#get the column names to be the first row in list_of_tuples and then add the graph names later
+    trace = go.Bar(
+        x = years,
+        y = stats
+    )
+    data = [trace]
+    py.plot(data, filename='basic-bar')
 
 
 def interactive_prompt():
@@ -509,46 +442,34 @@ def interactive_prompt():
         print('Goodbye')
     while response != 'exit':
         control_dict = process_command(response)
-        if control_dict != 'Invalid command':
+        if control_dict == 'Invalid command':
+            print('Invalid command')
+        else:
             player_name = control_dict['qb1']
             main_command = control_dict['main']
-            if player_name in all_QB_names:
-                if player_name not in player_names:
-                    player_names.append(player_name)
-                    playerinfo_response_list += get_QB_data(player_name)
-                    seasonalstats_response_list += get_season_data(player_name)
-                    populate_PlayerInfo(playerinfo_response_list)
-                    populate_SeasonalStats(seasonalstats_response_list)
+            if player_name not in player_names:
+                if player_name not in all_QB_names:
+                    print("That's not a QB name")
                 else:
-                    pass
-            else:
-                print("That's not a QB name")
-                response = input('Enter a command: ')
-                continue
+                    populate_PlayerInfo(get_QB_data(player_name))
+                    populate_SeasonalStats(get_season_data(player_name))
+                    player_names.append(player_name)
+            print(list_info(control_dict))
             if main_command == 'list':
                 for row in list_info(control_dict):
                     rowlist = []
                     for word in row:
                         formatted = format(word, '>8')
                         rowlist.append(formatted)
+                    txt = ''
                     for item in rowlist:
-                        print(item)
-
-
-                print(list_info(control_dict))
-
+                        txt += item
+                    print(txt)
+                if control_dict['stat'] != 'stats':
+                    get_plotly_for_one(list_info(control_dict))
+            #elif main_command == 'compare':
+            #######################################
         response = input('Enter a command: ')
-
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__=="__main__":
