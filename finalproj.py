@@ -1,9 +1,7 @@
 import requests
 import json
 import sqlite3
-import csv
 from bs4 import BeautifulSoup
-import datetime
 import plotly.plotly as py
 import plotly.graph_objs as go
 
@@ -102,7 +100,8 @@ def cache_QB_data(baseurl):
 
 
 def get_QB_data(name):
-    page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
+    html = 'https://www.pro-football-reference.com/players/qbindex.htm'
+    page_html = cache_QB_data(html)
     page_soup = BeautifulSoup(page_html, 'html.parser')
     data = page_soup.find(id='div_players')
     moredata = data.find('tbody')
@@ -149,14 +148,15 @@ def populate_PlayerInfo(list_of_tuples):
     global name_id
     global counter
     for player in list_of_tuples:
-        player_name = player[0]
+        player_name = player[0].strip()
         if player_name not in name_id.keys():
             name_id[player_name] = counter
             counter += 1
         year_born = player[1]
         college = player[2]
         team = player[3]
-        insertion = (None, player_name, name_id[player_name], year_born, college, team)
+        insertion = (None, player_name, name_id[player_name], year_born,
+                        college, team)
         statement = '''
             INSERT INTO 'PlayerInfo'
             VALUES (?, ?, ?, ?, ?, ?)
@@ -166,8 +166,9 @@ def populate_PlayerInfo(list_of_tuples):
     conn.close()
 
 
-def get_season_data(name): #this should be the return value of  get_QB_data
-    page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
+def get_season_data(name):
+    html = 'https://www.pro-football-reference.com/players/qbindex.htm'
+    page_html = cache_QB_data(html)
     page_soup = BeautifulSoup(page_html, 'html.parser')
     data = page_soup.find(id='div_players')
     moredata = data.find('tbody')
@@ -216,12 +217,13 @@ def get_season_data(name): #this should be the return value of  get_QB_data
                 interceptions = int(interceptions)
             except:
                 interceptions = 'n/a'
-            qbr = row.find(attrs={'data-stat': 'qbr'}).string
             try:
+                qbr = row.find(attrs={'data-stat': 'qbr'}).string
                 qbr = float(qbr)
             except:
                 qbr = 'n/a'
-            info = (name, int(year), int(age), team, wins, losses, comp_percent, pass_yards, passing_tds, interceptions, qbr)
+            info = (name, int(year), int(age), team, wins, losses, comp_percent,
+                    pass_yards, passing_tds, interceptions, qbr)
             info_list.append(info)
         return info_list
     else:
@@ -234,7 +236,7 @@ def populate_SeasonalStats(list_of_tuples):
     global name_id
     global counter
     for season in list_of_tuples:
-        player_name = season[0]#
+        player_name = season[0].strip()
         year = season[1]
         player_age = season[2]
         team = season[3]#
@@ -244,12 +246,11 @@ def populate_SeasonalStats(list_of_tuples):
         pass_yards = season[7]
         passing_tds = season[8]
         interceptions = season[9]
-        if player_name not in name_id.keys():
-            name_id[player_name] = counter
-            counter += 1
         playeridnum = name_id[player_name]
         qbr = season[10]
-        insertion = (None, player_name, playeridnum, team, year, player_age, wins, losses, comp_percent, pass_yards, passing_tds, interceptions, qbr)
+        insertion = (None, player_name, playeridnum, team, year, player_age,
+                        wins, losses, comp_percent, pass_yards, passing_tds,
+                        interceptions, qbr)
         statement = '''
             INSERT INTO 'SeasonalStats'
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -281,7 +282,8 @@ def cache_team_data(baseurl):
 
 
 def get_team_data():
-    all_team_data = cache_team_data('https://api.sportradar.us/nfl-ot2/league/hierarchy.json?api_key={}'.format(API_KEY))
+    html = 'https://api.sportradar.us/nfl-ot2/league/hierarchy.json?api_key={}'.format(API_KEY)
+    all_team_data = cache_team_data(html)
     team_info_list = []
     for division in all_team_data['conferences'][0]['divisions']:
         team_division = division['name']
@@ -290,7 +292,8 @@ def get_team_data():
             team_id = team['alias']
             team_location = team['market']
             stadium_name = team['venue']['name']
-            team_tup = (team_name, team_id, team_location, stadium_name, team_division)
+            team_tup = (team_name, team_id, team_location, stadium_name,
+                        team_division)
             team_info_list.append(team_tup)
     for division in all_team_data['conferences'][1]['divisions']:
         team_division = division['name']
@@ -299,7 +302,8 @@ def get_team_data():
             team_id = team['alias']
             team_location = team['market']
             stadium_name = team['venue']['name']
-            team_tup = (team_name, team_id, team_location, stadium_name, team_division)
+            team_tup = (team_name, team_id, team_location, stadium_name,
+                        team_division)
             team_info_list.append(team_tup)
     return team_info_list
 
@@ -313,7 +317,8 @@ def populate_Teams(list_of_tuples):
         team_location = team[2]
         stadium_name = team[3]
         team_division = team[4]
-        insertion = (None, team_name, team_id, team_location, stadium_name, team_division)
+        insertion = (None, team_name, team_id, team_location, stadium_name,
+                        team_division)
         statement = '''
             INSERT INTO 'Teams'
             VALUES (?, ?, ?, ?, ?, ?)
@@ -324,7 +329,8 @@ def populate_Teams(list_of_tuples):
 
 
 def get_all_QB_names():
-    page_html = cache_QB_data('https://www.pro-football-reference.com/players/qbindex.htm')
+    html = 'https://www.pro-football-reference.com/players/qbindex.htm'
+    page_html = cache_QB_data(html)
     page_soup = BeautifulSoup(page_html, 'html.parser')
     data = page_soup.find(id='div_players')
     moredata = data.find('tbody')
@@ -340,7 +346,8 @@ def process_command(command):
     query = command.split(' ')
     main_commands = ['list', 'compare']
     control_dict = {'main': '', 'qb1': '', 'qb2': '', 'season': '', 'stat': ''}
-    stat_options = ['team', 'age', 'record', 'completions', 'passyards', 'touchdowns', 'interceptions', 'rating', 'stats']
+    stat_options = ['team', 'age', 'record', 'completions', 'passyards',
+                    'touchdowns', 'interceptions', 'rating', 'stats']
     all_QB_names = get_all_QB_names()
     if query[0] not in main_commands:
         return 'Invalid command'
@@ -366,50 +373,122 @@ def process_command(command):
             return 'Invalid command'
     elif query[0] == 'compare':
         control_dict['main'] = query[0]
-        firstname1 = query[1]
-        lastname1 = query[2]
-        firstname2 = query[4]
-        lastname2 = query[5]
+        try:
+            firstname1 = query[1]
+            lastname1 = query[2]
+        except:
+            return 'Invalid command'
         qb1name = firstname1 + ' ' + lastname1
+        if qb1name in all_QB_names:
+            control_dict['qb2'] = qb1name
+        else:
+            return 'Invalid command'
+        try:
+            firstname2 = query[4]
+            lastname2 = query[5]
+        except:
+            return 'Invalid command'
+        qb2name = firstname2 + ' ' + lastname2
+        if qb2name in all_QB_names:
+            control_dict['qb2'] = qb2name
+        else:
+            return 'Invalid command'
         qb2name = firstname2 + ' ' + lastname2
         if qb1name and qb2name in all_QB_names:
             control_dict['qb1'] = qb1name
             control_dict['qb2'] = qb2name
         else:
             return 'Invalid command'
-        if query[6] in stat_options:
-            control_dict['stat'] = query[6]
-        else:
+        try:
+            if query[6] in stat_options:
+                control_dict['stat'] = query[6]
+            else:
+                return 'Invalid command'
+        except:
             return 'Invalid command'
     else:
         return 'Invalid command'
     return control_dict
 
 
-def list_info(control_dict): #{'main': 'list', 'qb1': 'Tom Brady', 'qb2': '', 'season': 'all', 'stat': 'interceptions'}
+def list_info(control_dict):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
     player_name = control_dict['qb1']
     stat_spec = control_dict['stat']
-    if stat_spec == 'stats':
-        statement = '''
-            SELECT Name, Team, Year, Age, Wins, Losses, CompletionPercent, PassYards, Touchdowns, Interceptions, Rating
-            FROM SeasonalStats
-            WHERE Name='{}'
-            ORDER BY Year ASC
-        '''.format(player_name)
-    else:
-        statement = '''
-            SELECT Name, Year, {}
-            FROM SeasonalStats
-            WHERE Name='{}'
-            ORDER BY Year ASC
-        '''.format(stat_spec, player_name)
-    cur.execute(statement)
-    info_list = []
-    for row in cur:
-        info_list.append(row)
-    return info_list
+    if control_dict['main'] == 'list':
+        if stat_spec == 'stats':
+            statement = '''
+                SELECT Name, Team, Year, Age, Wins, Losses, CompletionPercent,
+                PassYards, Touchdowns, Interceptions, Rating
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(player_name)
+        else:
+            statement = '''
+                SELECT Name, Year, {}
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(stat_spec, player_name)
+        cur.execute(statement)
+        info_list = []
+        for row in cur:
+            info_list.append(row)
+        return info_list
+    if control_dict['main'] == 'compare':
+        player_name2 = control_dict['qb2']
+        if stat_spec == 'stats':
+            statement = '''
+                SELECT Name, Team, Year, Age, Wins, Losses, CompletionPercent,
+                PassYards, Touchdowns, Interceptions, Rating
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(player_name)
+            cur.execute(statement)
+            info_list1 = []
+            for row in cur:
+                info_list1.append(row)
+
+            statement = '''
+                SELECT Name, Team, Year, Age, Wins, Losses, CompletionPercent,
+                PassYards, Touchdowns, Interceptions, Rating
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(player_name2)
+            cur.execute(statement)
+            info_list2 = []
+            for row in cur:
+                info_list2.append(row)
+        else:
+            statement = '''
+                SELECT Name, Year, {}
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(stat_spec, player_name)
+            cur.execute(statement)
+            info_list1 = []
+            for row in cur:
+                info_list1.append(row)
+
+            statement = '''
+                SELECT Name, Year, {}
+                FROM SeasonalStats
+                WHERE Name='{}'
+                ORDER BY Year ASC
+            '''.format(stat_spec, player_name2)
+            cur.execute(statement)
+            info_list2 = []
+            for row in cur:
+                info_list2.append(row)
+
+        return info_list1, info_list2
+
+
 
 
 def get_plotly_for_one(list_of_tuples):
@@ -420,13 +499,42 @@ def get_plotly_for_one(list_of_tuples):
         stat = tup[2]
         years.append(year)
         stats.append(stat)
-#get the column names to be the first row in list_of_tuples and then add the graph names later
+
     trace = go.Bar(
         x = years,
         y = stats
     )
     data = [trace]
     py.plot(data, filename='basic-bar')
+
+def get_plotly_for_two(list_of_tuples):
+    years = []
+    stats1 = []
+    stats2 = []
+    for tup in list_of_tuples[0]:
+        year = tup[1]
+        stat = tup[2]
+        years.append(year)
+        stats1.append(stat)
+    for tup in list_of_tuples[1]:
+        year = tup[1]
+        stat = tup[2]
+        years.append(year)
+        stats2.append(stat)
+    player1 = go.Bar(
+        x = years,
+        y = stats1
+    )
+    player2 = go.Bar(
+        x = years,
+        y = stats2
+    )
+    data = [player1, player2]
+    layout = go.Layout(
+        barmode='group'
+    )
+    fig = go.Figure(data=data, layout=layout)
+    py.plot(fig, filename='grouped-bar')
 
 
 def interactive_prompt():
@@ -441,20 +549,31 @@ def interactive_prompt():
     if response == 'exit':
         print('Goodbye')
     while response != 'exit':
+        if response == 'help':
+            f = open('README.txt', 'r')
+            helptext = f.read()
+            print(helptext)
+            response = input('Enter a command: ')
+            continue
         control_dict = process_command(response)
         if control_dict == 'Invalid command':
-            print('Invalid command')
+            print('Invalid command, try again or type "help" ')
         else:
+            ns = []
             player_name = control_dict['qb1']
+            player_name2 = control_dict['qb2']
+            if player_name2 != '':
+                ns.append(player_name2)
+            ns.append(player_name)
             main_command = control_dict['main']
-            if player_name not in player_names:
-                if player_name not in all_QB_names:
-                    print("That's not a QB name")
-                else:
-                    populate_PlayerInfo(get_QB_data(player_name))
-                    populate_SeasonalStats(get_season_data(player_name))
-                    player_names.append(player_name)
-            print(list_info(control_dict))
+            for p in ns:
+                if p not in player_names:
+                    if p not in all_QB_names:
+                        print("That's not a QB name")
+                    else:
+                        populate_PlayerInfo(get_QB_data(p))
+                        populate_SeasonalStats(get_season_data(p))
+                        player_names.append(p)
             if main_command == 'list':
                 for row in list_info(control_dict):
                     rowlist = []
@@ -467,8 +586,23 @@ def interactive_prompt():
                     print(txt)
                 if control_dict['stat'] != 'stats':
                     get_plotly_for_one(list_info(control_dict))
-            #elif main_command == 'compare':
-            #######################################
+            elif main_command == 'compare':
+                for bigtup in list_info(control_dict):
+                    for row in bigtup:
+                        rowlist = []
+                        for word in row:
+                            if word == row[0]:
+                                word = format(word, '<18')
+                                rowlist.append(word)
+                                continue
+                            formatted = format(word, '>8')
+                            rowlist.append(formatted)
+                        txt = ''
+                        for item in rowlist:
+                            txt += item
+                        print(txt)
+                    if control_dict['stat'] != 'stats':
+                        get_plotly_for_two(list_info(control_dict))
         response = input('Enter a command: ')
 
 
