@@ -12,8 +12,8 @@ Commands:
   list <QBname> <stat>
   compare <QBname> and <QBname> <stat>
 
-  *Input for <QBname> must be capitalized.
-  **Input options for <stat> include:
+  Input for <QBname> must be capitalized.
+  Input options for <stat> include:
                                         team
                                         age
                                         record
@@ -23,3 +23,15 @@ Commands:
                                         interceptions
                                         rating
                                         stats
+
+API Source: https://api.sportradar.us/nfl-ot2/league/hierarchy.json?api_key=MY_API_KEY
+Web Scraping Source: https://www.pro-football-reference.com/players/qbindex.htm
+
+
+My code is structured to first initiate the database using init_db(). Then, the
+Teams table populates itself because that doesn't depend on user input. However,
+to populate the SeasonalStats and PlayerInfo tables, user input is required. A
+user passes in their query and the database will subsequently populate itself
+using web scraped data. From there, the program will list the data the user
+specified in their query using list_info function, which can manipulate data in
+the database.
